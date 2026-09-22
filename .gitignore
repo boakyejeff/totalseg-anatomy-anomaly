@@ -1,0 +1,35 @@
+# Data (real CT scans + produced masks + reports output data)
+data/
+segs/
+logs/
+*.nii
+*.nii.gz
+*.mhd
+*.raw
+*.dcm
+
+# Virtual environments
+venv/
+venvs/
+.venv/
+ENV/
+
+# TotalSegmentator model weights & nnU-Net results
+nnUNet_results/
+totalsegmentator_weights/
+*.pt
+*.pth
+
+# Bytecode / caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Results produced at runtime
+results/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
