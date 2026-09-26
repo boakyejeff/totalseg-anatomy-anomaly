@@ -26,8 +26,12 @@ __pycache__/
 *.pyo
 .pytest_cache/
 
-# Results produced at runtime
-results/
+# Results: curated small CSV/JSON outputs ARE committed (see below).
+# Everything else produced at runtime stays out.
+results/*
+!results/*.csv
+!results/*.json
+!results/*.md
 
 # Editors / OS
 .DS_Store

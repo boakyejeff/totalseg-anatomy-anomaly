@@ -1,0 +1,70 @@
+scan,flag_kind,organ,score,reference,detail
+case_00008,volume_outlier,aorta,27.239,60.75,volume 469.8 mL vs cohort median 60.8 mL
+case_00008,volume_outlier,lung_upper_lobe_left,19.410,62.89,volume 1483.5 mL vs cohort median 62.9 mL
+case_00008,volume_outlier,rib_right_5,13.666,5.34,volume 29.8 mL vs cohort median 5.3 mL
+case_00008,volume_outlier,sternum,12.018,5.24,volume 86.0 mL vs cohort median 5.2 mL
+case_00008,volume_outlier,kidney_right,10.323,182.01,volume 653.0 mL vs cohort median 182.0 mL
+case_00008,volume_outlier,esophagus,6.210,9.02,volume 44.3 mL vs cohort median 9.0 mL
+case_00001,volume_outlier,pancreas,6.067,88.23,volume 187.7 mL vs cohort median 88.2 mL
+case_00008,volume_outlier,lung_lower_lobe_right,5.888,359.35,volume 2158.3 mL vs cohort median 359.4 mL
+case_00008,volume_outlier,rib_left_6,5.019,6.03,volume 32.8 mL vs cohort median 6.0 mL
+case_00008,volume_outlier,gluteus_medius_left,4.913,35.46,volume 259.2 mL vs cohort median 35.5 mL
+case_00006,volume_outlier,gluteus_medius_left,4.888,35.46,volume 258.0 mL vs cohort median 35.5 mL
+case_00008,volume_outlier,rib_left_5,4.624,6.35,volume 27.5 mL vs cohort median 6.3 mL
+case_00002,volume_outlier,gallbladder,4.608,23.27,volume 88.0 mL vs cohort median 23.3 mL
+case_00011,volume_outlier,gluteus_medius_left,4.382,35.46,volume 235.0 mL vs cohort median 35.5 mL
+case_00006,volume_outlier,aorta,4.305,60.75,volume 125.4 mL vs cohort median 60.8 mL
+case_00002,volume_outlier,rib_right_11,4.206,9.00,volume 16.0 mL vs cohort median 9.0 mL
+case_00008,volume_outlier,lung_lower_lobe_left,4.088,334.61,volume 1510.7 mL vs cohort median 334.6 mL
+case_00008,volume_outlier,gluteus_medius_right,4.052,43.70,volume 279.1 mL vs cohort median 43.7 mL
+case_00002,volume_outlier,lung_upper_lobe_left,3.936,62.89,volume 351.0 mL vs cohort median 62.9 mL
+case_00008,volume_outlier,iliac_artery_right,3.927,6.08,volume 28.1 mL vs cohort median 6.1 mL
+case_00005,volume_outlier,kidney_right,-3.780,182.01,volume 9.6 mL vs cohort median 182.0 mL
+case_00000,volume_outlier,gluteus_medius_left,3.689,35.46,volume 203.4 mL vs cohort median 35.5 mL
+case_00005,volume_outlier,rib_right_8,3.671,9.62,volume 31.4 mL vs cohort median 9.6 mL
+case_00006,volume_outlier,gluteus_medius_right,3.531,43.70,volume 248.8 mL vs cohort median 43.7 mL
+case_00008,volume_outlier,spinal_cord,3.504,46.88,volume 119.1 mL vs cohort median 46.9 mL
+case_00002,volume_outlier,aorta,3.353,60.75,volume 111.1 mL vs cohort median 60.8 mL
+case_00004,volume_outlier,rib_left_11,3.334,8.88,volume 16.7 mL vs cohort median 8.9 mL
+case_00001,volume_outlier,autochthon_left,3.311,413.22,volume 696.4 mL vs cohort median 413.2 mL
+case_00005,volume_outlier,gluteus_minimus_right,-3.303,63.58,volume 2.0 mL vs cohort median 63.6 mL
+case_00006,volume_outlier,rib_right_11,3.283,9.00,volume 14.5 mL vs cohort median 9.0 mL
+case_00004,volume_outlier,aorta,3.228,60.75,volume 109.2 mL vs cohort median 60.8 mL
+case_00005,volume_outlier,vertebrae_L3,-3.166,75.92,volume 13.6 mL vs cohort median 75.9 mL
+case_00006,volume_outlier,gluteus_maximus_right,3.149,115.06,volume 630.1 mL vs cohort median 115.1 mL
+case_00001,volume_outlier,spleen,3.116,275.41,volume 676.2 mL vs cohort median 275.4 mL
+case_00008,volume_outlier,rib_right_6,3.106,6.08,volume 30.1 mL vs cohort median 6.1 mL
+case_00011,volume_outlier,gluteus_medius_right,3.067,43.70,volume 221.9 mL vs cohort median 43.7 mL
+case_00005,asymmetry,kidney,0.903,0.00,"L=186.6 mL, R=9.6 mL"
+case_00005,asymmetry,gluteus_medius,0.891,0.00,"L=13.2 mL, R=0.8 mL"
+case_00007,asymmetry,iliac_vena,0.818,0.00,"L=0.1 mL, R=0.6 mL"
+case_00005,asymmetry,iliopsoas,0.803,0.00,"L=2.9 mL, R=26.5 mL"
+case_00005,asymmetry,gluteus_minimus,0.704,0.00,"L=11.6 mL, R=2.0 mL"
+case_00003,asymmetry,gluteus_maximus,0.602,0.00,"L=1.2 mL, R=4.8 mL"
+case_00010,asymmetry,lung_lower_lobe,0.500,0.00,"L=34.1 mL, R=102.3 mL"
+case_00008,asymmetry,kidney,0.481,0.00,"L=228.9 mL, R=653.0 mL"
+case_00007,asymmetry,lung_lower_lobe,0.473,0.00,"L=174.9 mL, R=62.6 mL"
+case_00010,asymmetry,iliac_artery,0.432,0.00,"L=0.2 mL, R=0.6 mL"
+case_00010,asymmetry,hip,0.332,0.00,"L=12.5 mL, R=6.3 mL"
+case_00008,asymmetry,brachiocephalic_vein,0.323,0.00,"L=15.3 mL, R=7.8 mL"
+case_00005,asymmetry,gluteus_maximus,0.295,0.00,"L=47.9 mL, R=88.0 mL"
+case_00002,asymmetry,lung_lower_lobe,0.269,0.00,"L=354.9 mL, R=204.2 mL"
+case_00001,asymmetry,gluteus_maximus,0.255,0.00,"L=7.7 mL, R=12.9 mL"
+case_00009,asymmetry,gluteus_medius,0.239,0.00,"L=13.4 mL, R=8.3 mL"
+case_00001,asymmetry,lung_lower_lobe,0.232,0.00,"L=128.0 mL, R=205.2 mL"
+case_00004,asymmetry,gluteus_medius,0.223,0.00,"L=9.2 mL, R=14.4 mL"
+case_00003,asymmetry,gluteus_medius,0.213,0.00,"L=13.4 mL, R=20.6 mL"
+case_00009,asymmetry,iliac_vena,0.206,0.00,"L=5.6 mL, R=3.7 mL"
+case_00007,asymmetry,iliac_artery,0.206,0.00,"L=1.4 mL, R=2.2 mL"
+case_00009,asymmetry,adrenal_gland,0.182,0.00,"L=3.9 mL, R=2.7 mL"
+case_00008,asymmetry,common_carotid_artery,0.179,0.00,"L=7.0 mL, R=4.9 mL"
+case_00008,asymmetry,lung_lower_lobe,0.177,0.00,"L=1510.7 mL, R=2158.3 mL"
+case_00011,asymmetry,adrenal_gland,0.175,0.00,"L=7.8 mL, R=5.5 mL"
+case_00002,asymmetry,gluteus_medius,0.170,0.00,"L=35.5 mL, R=25.1 mL"
+case_00000,asymmetry,adrenal_gland,0.166,0.00,"L=4.7 mL, R=3.3 mL"
+case_00005,asymmetry,autochthon,0.163,0.00,"L=171.5 mL, R=238.2 mL"
+case_00002,asymmetry,iliac_artery,0.160,0.00,"L=7.8 mL, R=5.6 mL"
+case_00005,asymmetry,lung_lower_lobe,0.160,0.00,"L=294.0 mL, R=405.6 mL"
+case_00011,asymmetry,kidney,0.155,0.00,"L=207.4 mL, R=151.8 mL"
+case_00003,asymmetry,iliac_vena,0.154,0.00,"L=4.5 mL, R=6.1 mL"
+case_00006,asymmetry,lung_lower_lobe,0.153,0.00,"L=571.8 mL, R=778.0 mL"

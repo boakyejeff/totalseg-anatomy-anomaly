@@ -43,59 +43,74 @@ interpretable statistics over organ volumes, with no disease labels at all.
 
 ## Real results
 
-**Data**: two real contrast-enhanced abdominal CTs from the public KiTS19
+**Data**: twelve real contrast-enhanced abdominal CTs from the public KiTS19
 challenge (Heller et al.; via the official `neheller/KiTS-Challenge-Imaging`
-Hugging Face dataset): `images/case_00000.nii.gz`
-(611×512×512, 0.5×0.92×0.92 mm, 226 MB float64 → converted losslessly to
-141 MB int16) and `images/case_00001.nii.gz`
-(602×512×512, 0.5×0.8×0.8 mm, 276 MB float64 → 176 MB int16).
+Hugging Face dataset): `case_00000` through `case_00011`. All scans were
+converted losslessly from float64 to int16 (verified value-range and
+round-trip; e.g. `case_00005`: 834×512×512, range −1024…3071, 313 MB → 198 MB).
 No synthetic or phantom data are used for reported results; tiny synthetic
 masks are used only for the unit smoke test (`tests/test_smoke.py`).
 
+**Cohort caveat (important).** KiTS19 is a *kidney-tumor clinical cohort* —
+these are not healthy controls. Unilateral kidney asymmetry is *expected* in
+this setting (tumors, cysts, prior nephrectomy, atrophy). The asymmetry flags
+below are anatomical observations, not diagnoses: this pipeline has no disease
+labels, no radiologist ground truth, and makes no disease-detection claims.
+Kidney volumes here must not be treated as population norms.
+
 **Segmentation**: TotalSegmentator 2.18.0, `--fast` (3 mm model), CPU, one
 scan at a time: **117 binary masks per scan** at full original resolution
-(uint8). Runtime per scan on a 2-CPU/8 GB box: ~56 s prediction (4
-sliding-window tiles), ~3 s resampling back to native resolution, ~55–62 s
-saving masks.
+(uint8) — 1,404 masks total. Wall time per scan on a shared 2-CPU/8 GB box:
+78–293 s (typical 130–175 s: ~20–35 s/tile prediction, ~3 s resampling,
+~60 s saving). Several scans needed OOM retries (see Limitations).
 
-### Anomaly report (REAL numbers from REAL runs)
+### Anomaly report (REAL numbers from REAL runs, n=12)
 
-Cohort n=2, so robust z-scores are degenerate by design (the code requires
-n≥3) — no z-score flags are emitted. The real signal at this scale is the
-asymmetry index. `results/anomaly_report.csv` (from
-`python src/report.py --seg-dir segs/case_00000 --scan-id case_00000 --seg-dir2 segs/case_00001 --scan-id2 case_00001`):
+`results/anomaly_report.csv` (from `python src/report.py --volumes-csv
+results/case_*_volumes.csv`), `results/cohort_summary.csv` (per-organ median
++ IQR), and `results/asymmetry_indices.csv` (complete L/R index per paired
+organ per scan — not just thresholded flags).
 
-| scan | flag | organ | score | detail |
+Cohort organ volumes, median (Q1–Q3), mL:
+
+| organ | n | median | Q1 | Q3 |
 |---|---|---|---|---|
-| case_00001 | asymmetry | gluteus_maximus | 0.255 | L=7.7 mL, R=12.9 mL |
-| case_00001 | asymmetry | lung_lower_lobe | 0.232 | L=128.0 mL, R=205.2 mL |
-| case_00000 | asymmetry | adrenal_gland | 0.166 | L=4.7 mL, R=3.3 mL |
+| liver | 12 | 1941.3 | 1541.5 | 2226.7 |
+| colon | 12 | 634.2 | 468.4 | 790.1 |
+| spleen | 12 | 275.4 | 152.1 | 319.2 |
+| stomach | 12 | 269.2 | 163.1 | 428.1 |
+| kidney_left | 12 | 196.3 | 166.3 | 229.4 |
+| kidney_right | 12 | 182.0 | 160.3 | 214.9 |
+| pancreas | 12 | 88.2 | 78.9 | 98.8 |
+| aorta | 12 | 60.8 | 52.0 | 109.7 |
 
-Honest reading: the case_00001 flags are almost certainly **scan-truncation
-artifacts** (gluteus and lung cut at the field-of-view edge — the scans are
-abdominal, lungs/legs only partially covered), not pathology. That is the
-method working as designed: it flags gross anatomical deviations for human
-review, whether they come from disease or from acquisition limits. The
-case_00000 adrenal asymmetry (4.7 vs 3.3 mL) is within normal inter-side
-variation for a ~4 mL structure at 3 mm segmentation resolution — a reminder
-that small-structure flags need a larger cohort before they mean anything.
+Top kidney asymmetry flags (index `|L−R|/(L+R)`, warn ≥ 0.15):
 
-Selected real organ volumes (mL), from `results/case_00000_volumes.csv` /
-`results/case_00001_volumes.csv`:
+| scan | L (mL) | R (mL) | index |
+|---|---|---|---|
+| case_00005 | 186.6 | 9.6 | 0.903 |
+| case_00008 | 228.9 | 653.0 | 0.481 |
+| case_00011 | 207.4 | 151.8 | 0.155 |
 
-| organ | case_00000 | case_00001 |
-|---|---|---|
-| liver | 1559.61 | 1879.08 |
-| spleen | 269.36 | 676.25 |
-| kidney_right | 191.54 | 213.33 |
-| kidney_left | 159.78 | 205.92 |
-| pancreas | 73.70 | 187.67 |
-| aorta | 50.48 | 64.08 |
-| stomach | 154.42 | 313.68 |
-| colon | 953.49 | 469.48 |
+The other 9 scans have kidney asymmetry indices 0.002–0.117 (near-symmetric).
+Robust z-scores also flag `kidney_right` as a volume outlier in case_00005
+(9.6 mL vs cohort median 182.0 mL, z=−3.78) and case_00008 (653.0 mL vs
+182.0 mL, z=+10.32). TotalSegmentator's `kidney_cyst_right` class fired in
+3/12 scans (17.2–26.6 mL).
 
-(KiTS19 scans are kidney-tumor cases; kidney-adjacent volumes here must not
-be treated as population norms.)
+Honest reading: in a kidney-tumor cohort, these are the expected unilateral
+kidney deviations — a near-absent right kidney (case_00005), a markedly
+enlarged right kidney (case_00008), and a mild asymmetry (case_00011). The
+pipeline flags them for human review; it does **not** diagnose tumors, cysts,
+or nephrectomy — there is no lesion ground truth here and no
+disease-detection performance is claimed.
+
+Other recurring flags are acquisition/truncation artifacts, not pathology:
+gluteal/iliopsoas/iliac-vessel asymmetries at the field-of-view edge
+(e.g. case_00005 gluteus_medius L=13.2 vs R=0.8 mL; case_00007 iliac_vena
+L=0.1 vs R=0.6 mL — sub-mL structures at 3 mm resolution), rib outliers from
+partial coverage, and lung-lobe asymmetry where the abdominal FOV clips the
+lungs. Small-structure flags need a larger cohort before they mean anything.
 
 ## How to run
 
@@ -107,9 +122,16 @@ python3 -m venv ~/venvs/totalseg
 TotalSegmentator -i data/case_00000_i16.nii.gz -o segs/case_00000 --fast --nr_thr_resamp 1 --nr_thr_saving 1
 TotalSegmentator -i data/case_00001_i16.nii.gz -o segs/case_00001 --fast --nr_thr_resamp 1 --nr_thr_saving 1
 
-# 2. Volumetry + anomaly scoring (seconds)
-python src/report.py --seg-dir segs/case_00000 --scan-id case_00000 \
-                     --seg-dir2 segs/case_00001 --scan-id2 case_00001
+# 2. Volumetry + anomaly scoring (seconds; repeat --scan per scan, or use
+#    precomputed --volumes-csv files)
+python src/report.py --scan segs/case_00000=case_00000 \
+                     --scan segs/case_00001=case_00001 \
+                     --out results/anomaly_report.csv
+#    (also writes results/asymmetry_indices.csv: every paired organ's L/R
+#     index per scan, not just thresholded flags)
+
+# Cohort median/IQR table (README-ready):
+python src/cohort_summary.py results/case_*_volumes.csv --out results/cohort_summary.csv
 
 # Smoke test (no TotalSegmentator needed; uses tiny synthetic masks)
 python tests/test_smoke.py
@@ -119,12 +141,16 @@ python tests/test_smoke.py --real-seg-dir segs/case_00000 --scan-id case_00000
 
 ## Limitations (read before citing)
 
-- **N=2 scans — this is a proof of concept of an unsupervised method, NOT a
-  validated detector.** Cohort z-scores with n=2 are degenerate (MAD over two
-  points); the meaningful signals at this scale are the asymmetry indices and
-  the raw volumetric profile. The pipeline is written to scale unchanged to
-  the full 1,939-scan TotalSegmentator release, where the z-score reference
-  becomes real.
+- **N=12 scans from a kidney-tumor clinical cohort — this is a proof of
+  concept of an unsupervised method, NOT a validated detector.** Robust
+  z-scores are computed (n≥3 required by the code) but remain unstable at
+  n=12; treat them as exploratory. The pipeline is written to scale unchanged
+  to the full 1,939-scan TotalSegmentator release, where the z-score
+  reference becomes real.
+- **No disease-detection claims.** KiTS19 cases have kidney tumors, but this
+  repo has no lesion annotations and no radiologist review. Asymmetry/volume
+  flags are anatomical observations for human review, not diagnoses, and no
+  sensitivity/specificity is reported (none can be computed).
 - Segmentation failures look like anomalies: a missed organ (e.g. bowel
   truncated at the scan edge) inflates asymmetry/volume flags. TotalSegmentator
   `--fast` uses the 3 mm model (Dice 0.84 vs 0.94 for the 1.5 mm model), so
@@ -132,8 +158,12 @@ python tests/test_smoke.py --real-seg-dir segs/case_00000 --scan-id case_00000
 - The Wasserthal age trends are directional correlations, not per-organ
   normative mean volumes; without age/sex metadata per scan they can only be
   used qualitatively.
-- KiTS19 scans are kidney-tumor cases — kidney-adjacent volumes in these two
-  scans should not be taken as population norms.
+- **Low-RAM reality.** On the shared 2-CPU/8 GB box used here, TotalSegmentator
+  runs were OOM-killed intermittently (exit 137) by co-tenant training jobs;
+  a memory-gated retry loop (wait for ≥3 GB free, skip completed scans)
+  eventually completed all 12. Two float64 transients in the installed
+  TotalSegmentator were patched in the *environment only* (never in this
+  repo) — see BUILD-NOTES.md. Runtimes above are wall-clock on that box.
 
 ## References
 

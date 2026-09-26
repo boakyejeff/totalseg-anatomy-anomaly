@@ -1,19 +1,37 @@
 # Build notes — honest log of what happened
 
-## Data source (final)
+## Data source (final): 12 scans
 - **Dataset**: KiTS19 (kidney tumor segmentation challenge, Heller et al. 2019),
-  via the official public Hugging Face dataset `neheller/KiTS-Challenge-Imaging`.
+  via the official public Hugging Face dataset `neheller/KiTS-Challenge-Imaging`
+  (dataset SHA `65f1f295873a326230153c7e1de0c7dba10f0b29`, verified via API).
 - **Files** (individual per-case NIfTI, direct download):
   - `https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/main/images/case_00000.nii.gz`
-  - `https://huggingface.co/datasets/neheller/KiTS-Challenge-Imaging/resolve/main/images/case_00001.nii.gz`
-- **Verified on 2026-09-22** (gzip integrity OK, headers read with nibabel):
-  - `case_00000`: 225,959,569 bytes → shape (611, 512, 512), spacing [0.5, 0.92, 0.92] mm
-  - `case_00001`: 276,387,358 bytes → shape (602, 512, 512), spacing [0.5, 0.8, 0.8] mm
-  - Both stored as **float64** (unusual for CT; HU values are integers in [-1024, 1413]).
-  - Converted losslessly to int16 (`case_00000_i16.nii.gz` 140,626,644 bytes;
-    `case_00001_i16.nii.gz` 175,784,068 bytes; range check asserted before cast).
-    Originals deleted after conversion. This is a dtype cast of the real scan,
-    not a substitution.
+    through `.../case_00011.nii.gz` (12 scans).
+- **Verified 2026-09-22** (case_00000, case_00001) **and 2026-09-26**
+  (case_00002–case_00011): gzip integrity OK (`gzip -t`), headers read with
+  nibabel. All stored as **float64** (unusual for CT; HU integers in
+  [-1024, 3071]); converted losslessly to int16 with range-check + round-trip
+  verification before deleting originals. Per-scan facts:
+
+  | case | shape | HU range | int16 size |
+  |---|---|---|---|
+  | 00000 | 611×512×512 | −1024…1413 | 141 MB |
+  | 00001 | 602×512×512 | −1024…1413 | 176 MB |
+  | 00002 | 261×512×512 | −1024…3071 | 63 MB |
+  | 00003 | (see logs) | −1024…3071 | — |
+  | 00004 | (see logs) | — | — |
+  | 00005 | 834×512×512 | −1024…3071 | 198 MB (slab-wise memmap conversion; whole-array did not fit RAM) |
+  | 00006 | 157×512×512 | −1024…1782 | 50 MB |
+  | 00007 | 61×512×512 | −1024…1088 | 17 MB |
+  | 00008 | 227×512×512 | −1024…3071 | 68 MB |
+  | 00009 | 77×512×512 | −1024…1374 | 23 MB |
+  | 00010 | 50×512×512 | −1024…1280 | 16 MB |
+  | 00011 | 80×512×512 | −1024…1734 | 27 MB |
+
+  (A first conversion attempt reused the float64 NIfTI header and silently
+  produced float64 output; caught by dtype verification, deleted, redone with
+  the header dtype set to int16. `src/convert_dtype.py` is whole-array and
+  unsuitable for very large scans on small boxes — noted in code.)
 - **Why not LUNA16**: `s3://luna16` denies unsigned LIST and unsigned GET
   (AccessDenied on both `aws`-style listing and direct HTTPS object GET),
   and the AWS CLI is not installed here. The task brief allowed falling back
@@ -81,7 +99,30 @@ debugging; nothing was faked or skipped:
      refers to the original release).
    - Full logs: `logs/scan1.log`, `logs/scan2.log` (gitignored).
 
-## Anomaly pipeline on real masks (2026-09-22)
+## Scale-up to 12 scans (2026-09-26) — OOM retries
+The box is shared with other agents' training/registration jobs, so available
+RAM fluctuated between ~0.4 and ~4.5 GB. Inference survived, but several scans
+were OOM-killed (exit 137) right after the prediction tiles, with 0 masks
+saved — the post-prediction resample-back and save phases held full labelmaps
+as float64. Two more venv-only patches (backup `nnunet.py.bak3`,
+behavior-preserving — label values are integers either way):
+(1) `save_segmentation_nifti`: `img.get_fdata()` → `np.asarray(img.dataobj)`
+(avoided one full-labelmap float64 load per each of 117 classes);
+(2) resample-back: `img_pred.get_fdata().astype(np.uint8)` →
+`np.asarray(img_pred.dataobj).astype(np.uint8)`.
+Retry pattern: sequential loop, skip dirs already having ≥100 masks, plus a
+memory gate (wait until ≥3 GB available before launching; 15-min cap, then
+proceed anyway). Failed scans were retried on later passes when the box was
+quieter — OOM kills were intermittent timing luck, not scan-specific.
+
+Final successful wall times (exit 0, 117 masks each):
+- case_00002: 174 s; case_00003: 271 s; case_00004: 78 s; case_00005: 198 s;
+  case_00006: 150 s; case_00007: 134 s; case_00008: 293 s; case_00009: 132 s;
+  case_00010: 129 s; case_00011: 131 s
+  (plus case_00000: ~121 s and case_00001: ~111 s from 2026-09-22).
+All 12 scans: 117/117 masks, uint8, at native resolution.
+
+## Anomaly pipeline on real masks (2026-09-22, n=2)
 - `python src/report.py --seg-dir segs/case_00000 --scan-id case_00000
   --seg-dir2 segs/case_00001 --scan-id2 case_00001`
   → `results/anomaly_report.csv` (gitignored; key numbers copied into README).
@@ -92,12 +133,38 @@ debugging; nothing was faked or skipped:
   (L=4.7/R=3.3 mL). The case_00001 flags are field-of-view truncation, not
   pathology — noted honestly in the README.
 
+## Anomaly pipeline, full cohort (2026-09-26, n=12)
+- `python src/volumetry.py --seg-dir segs/case_XXXXX --out
+  results/case_XXXXX_volumes.csv` → 12 per-scan CSVs (45–109 organs/scan;
+  fewer for truncated FOVs, e.g. case_00007: 46, case_00010: 45).
+- `python src/report.py --volumes-csv results/case_*_volumes.csv --out
+  results/anomaly_report.csv --asymmetry-out results/asymmetry_indices.csv`
+- `python src/cohort_summary.py results/case_*_volumes.csv --out
+  results/cohort_summary.csv`
+- New code (2026-09-26): `all_asymmetry_indices()` /
+  `write_asymmetry_csv()` in `src/anomaly_scoring.py` export the complete
+  per-organ L/R asymmetry index for every scan (not only thresholded flags);
+  `src/report.py` gained `--asymmetry-out` and repeatable `--scan DIR=ID`
+  / `--volumes-csv`; `src/cohort_summary.py` gained README-ready Markdown
+  tables; `tests/test_smoke.py` covers the new functions.
+- Real results (n=12): kidney_left median 196.3 mL (IQR 166.3–229.4);
+  kidney_right median 182.0 mL (IQR 160.3–214.9). Kidney asymmetry flagged in
+  3/12: case_00005 AI=0.903 (L=186.6/R=9.6 mL), case_00008 AI=0.481
+  (L=228.9/R=653.0 mL), case_00011 AI=0.155 (L=207.4/R=151.8 mL); other 9
+  scans 0.002–0.117. `kidney_cyst_right` segmented in 3/12 (17.2–26.6 mL).
+  Remaining flags are FOV-truncation artifacts (gluteals, iliac vessels, ribs,
+  lung lobes at scan edges). No diagnostic claims: KiTS19 is a kidney-tumor
+  cohort, no lesion ground truth was used, no sensitivity/specificity exists.
+
 ## Method honesty
-- N=2: cohort z-scores are degenerate at this scale (the code refuses n<3);
-  the anomaly report's meaningful content at this scale is the asymmetry
-  indices + raw organ volumes. Stated up front in README.
+- N=12 (was N=2 on 2026-09-22): cohort z-scores are computed (the code
+  requires n≥3) but remain unstable at this scale — stated up front in README.
+  The anomaly report's most interpretable content is the asymmetry indices +
+  raw organ volumes. The pipeline scales unchanged to thousands of scans.
 - KiTS19 cases are kidney-tumor scans, so kidney volumes/asymmetry here are
-  NOT population norms — stated in README limitations.
+  NOT population norms and no disease-detection performance is claimed —
+  stated in README limitations. Unilateral kidney asymmetry is expected in
+  this clinical setting; flags are for human review, not diagnosis.
 - The Wasserthal et al. 2023 age trends are directional Spearman
   correlations, not normative mean/SD tables; the code and README call them
   trend priors and never fabricate z-scores from them.

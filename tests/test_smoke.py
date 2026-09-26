@@ -76,6 +76,46 @@ def test_cohort_z():
     print("cohort z-score OK")
 
 
+def test_cohort_summary():
+    from cohort_summary import cohort_stats, markdown_table
+    with tempfile.TemporaryDirectory() as d:
+        paths = []
+        # 4 scans, liver volumes exactly 100,200,300,400 mL -> median 250, Q1 175, Q3 325
+        for i, vol_ml in enumerate([100.0, 200.0, 300.0, 400.0]):
+            csvp = os.path.join(d, f"s{i}.csv")
+            with open(csvp, "w", newline="") as f:
+                w = csv.writer(f)
+                w.writerow(["organ", "voxels", "volume_ml"])
+                w.writerow(["liver", 1000, f"{vol_ml:.2f}"])
+                w.writerow(["kidney_left", 100, "10.00"])
+            paths.append(csvp)
+        stats = cohort_stats(paths)
+        liver = next(s for s in stats if s.organ == "liver")
+        assert liver.n == 4
+        assert abs(liver.median_ml - 250.0) < 1e-6, liver
+        assert abs(liver.q1_ml - 175.0) < 1e-6, liver
+        assert abs(liver.q3_ml - 325.0) < 1e-6, liver
+        kidney = next(s for s in stats if s.organ == "kidney_left")
+        assert abs(kidney.median_ml - 10.0) < 1e-6
+        md = markdown_table(stats, ["liver", "missing_organ"])
+        assert "| liver | 4 | 250.0 |" in md and "| missing_organ | 0 |" in md
+    print("cohort summary OK")
+
+
+def test_flag_recurrence():
+    from anomaly_scoring import Flag, flag_recurrence
+    flags = [
+        Flag("s1", "asymmetry", "kidney", 0.5, 0.0),
+        Flag("s2", "asymmetry", "kidney", 0.4, 0.0),
+        Flag("s1", "volume_outlier", "liver", 3.5, 100.0),
+    ]
+    rec = flag_recurrence(flags)
+    assert rec[0][:3] == ("asymmetry", "kidney", 2), rec
+    assert rec[0][3] == ["s1", "s2"]
+    assert rec[1][:3] == ("volume_outlier", "liver", 1)
+    print("flag recurrence OK")
+
+
 def test_real_masks(seg_dir: str, scan_id: str):
     from volumetry import write_csv
     vols = scan_volumes(seg_dir)
@@ -98,6 +138,8 @@ def main():
     test_volumetry()
     test_asymmetry()
     test_cohort_z()
+    test_cohort_summary()
+    test_flag_recurrence()
     if args.real_seg_dir:
         test_real_masks(args.real_seg_dir, args.scan_id)
     print("ALL SMOKE TESTS PASSED")

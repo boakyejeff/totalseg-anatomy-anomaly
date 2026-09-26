@@ -16,9 +16,11 @@ priors and flag *anatomical deviations* with zero disease labels:
    (direction of change with age), used only to sanity-check the cohort-level
    pattern; they are NOT per-organ normative mean volumes.
 
-With N=2-3 scans this is a proof of concept. The method scales unchanged to a
-cohort of thousands (e.g. the 1,939-scan TotalSegmentator training release),
-where the z-score reference becomes meaningful.
+With small cohorts this is a proof of concept; robust z-scores need n>=3
+(the code refuses fewer) and become more stable as the cohort grows. The
+method scales unchanged to a cohort of thousands (e.g. the 1,939-scan
+TotalSegmentator training release), where the z-score reference becomes
+meaningful.
 """
 from __future__ import annotations
 
@@ -28,23 +30,8 @@ import os
 from dataclasses import dataclass, field
 
 # TotalSegmentator class names are like "<structure>_left"/"<structure>_right".
-# Paired structures we test for left-right asymmetry.
-PAIRED_STRUCTURES = [
-    "adrenal_gland",
-    "clavicula",
-    "femur",
-    "gluteus_maximus",
-    "gluteus_medius",
-    "gluteus_minimus",
-    "hip",
-    "iliac_artery",
-    "iliopsoas",
-    "kidney",
-    "lung_upper_lobe",
-    "lung_middle_lobe",   # right-only in practice; guarded at runtime
-    "lung_lower_lobe",
-    "rib_left_",          # placeholder -- ribs are numbered; handled by prefix logic
-]
+# Paired structures are auto-detected from those suffixes at runtime
+# (see asymmetry_flags), so no explicit paired-organ list is needed.
 
 # TotalSegmentator class names use suffixes "_left"/"_right" for most paired
 # organs, e.g. kidney_left, kidney_right, lung_upper_lobe_left ...
@@ -158,6 +145,22 @@ def asymmetry_flags(scans: dict[str, list[OrganRecord]]) -> list[Flag]:
     return sorted(flags, key=lambda f: -f.value)
 
 
+def flag_recurrence(flags: list[Flag]) -> list[tuple[str, str, int, list[str]]]:
+    """Group flags by (kind, organ): number of scans flagged and which ones.
+
+    Sorted by scan count descending, then kind/organ. Recurring flags are
+    more interesting than single-scan ones: a flag that fires on half the
+    cohort is likely a systematic effect (e.g. field-of-view truncation),
+    while a flag on one scan is a candidate for individual review.
+    """
+    groups: dict[tuple[str, str], list[str]] = {}
+    for fl in flags:
+        groups.setdefault((fl.kind, fl.organ), []).append(fl.scan)
+    out = [(kind, organ, len(sids), sorted(sids))
+           for (kind, organ), sids in groups.items()]
+    return sorted(out, key=lambda t: (-t[2], t[0], t[1]))
+
+
 def trend_priors_report() -> str:
     lines = ["Age-volume trend priors (Wasserthal et al. 2023, n=4004, Spearman rs):"]
     for organ, rs in AGE_TRENDS_RS.items():
@@ -176,6 +179,53 @@ def write_report(flags: list[Flag], out_path: str, cohort_size: int) -> None:
             w.writerow([fl.scan, fl.kind, fl.organ, f"{fl.value:.3f}",
                         f"{fl.reference:.2f}", fl.detail])
     print(f"wrote {len(flags)} flags to {out_path} (cohort n={cohort_size})")
+
+
+@dataclass
+class AsymmetryIndex:
+    scan: str
+    organ: str  # base name without _left/_right
+    left_ml: float
+    right_ml: float
+    ai: float  # |L-R|/(L+R), 0 = symmetric
+
+
+def all_asymmetry_indices(scans: dict[str, list[OrganRecord]]) -> list[AsymmetryIndex]:
+    """Asymmetry index for EVERY paired organ with both sides present.
+
+    Unlike asymmetry_flags (thresholded at ASYMMETRY_WARN), this exports the
+    complete distribution so readers can see indices across the full cohort
+    and judge the threshold choice themselves.
+    """
+    out: list[AsymmetryIndex] = []
+    for scan, recs in scans.items():
+        vols = {r.organ: r.volume_ml for r in recs}
+        seen: set[str] = set()
+        for organ in vols:
+            base, side = None, None
+            for suf in PAIR_SUFFIXES:
+                if organ.endswith(suf):
+                    base, side = organ[: -len(suf)], suf
+                    break
+            if base is None or base in seen:
+                continue
+            seen.add(base)
+            l = vols.get(base + "_left", 0.0)
+            r = vols.get(base + "_right", 0.0)
+            if l <= 0 or r <= 0:
+                continue
+            out.append(AsymmetryIndex(scan, base, l, r, asymmetry_index(l, r)))
+    return sorted(out, key=lambda a: (a.scan, a.organ))
+
+
+def write_asymmetry_csv(indices: list[AsymmetryIndex], out_path: str) -> None:
+    with open(out_path, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["scan", "organ", "left_ml", "right_ml", "asymmetry_index"])
+        for a in indices:
+            w.writerow([a.scan, a.organ, f"{a.left_ml:.2f}",
+                        f"{a.right_ml:.2f}", f"{a.ai:.4f}"])
+    print(f"wrote {len(indices)} asymmetry indices to {out_path}")
 
 
 def main() -> None:
