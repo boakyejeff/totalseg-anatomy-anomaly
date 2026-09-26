@@ -1,5 +1,6 @@
 # Anatomical-Prior Anomaly Detection on CT (TotalSegmentator)
 
+![Project cover](assets/cover.png)
 > **NOVELTY CLAIM.** Unsupervised anomaly detection on CT that uses 100+
 > whole-body anatomical structures — segmented automatically by
 > TotalSegmentator — as *structural priors*, with **zero disease labels**.
